@@ -1,354 +1,176 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { BrowserRouter, Routes, Route, Link, NavLink, useNavigate } from 'react-router-dom';
 import './App.css'; 
 
-// --- Configuration (from HTML script) ---
+// --- Configuration ---
 const BACKEND_CONFIG = {
-    python: {
-        name: 'Python Flask',
-        baseUrl: 'http://localhost:5000',
-        analyzeEndpoint: '/api/analyze',
-    },
-    nodejs: {
-        name: 'Node.js Express',
-        baseUrl: 'http://localhost:3000',
-        analyzeEndpoint: '/api/analyze',
-    }
+    nodejs: { name: 'Node.js Express', baseUrl: 'http://localhost:3000', analyzeEndpoint: '/api/analyze' }
 };
 
-// --- MAIN APP COMPONENT (Full UI Integration) ---
+// --- RENDER ANALYSIS DETAILS HELPER FUNCTION ---
+const renderAnalysisDetails = (data) => {
+    const analysisData = data || { match_score: 0, experience_match: '-', skills_match_percentage: '-', keyword_density: '-', skills_found: [], recommendations: [] };
+    const allTechnicalSkills = ['javascript', 'python', 'java', 'react', 'node.js', 'html', 'css', 'sql', 'mongodb', 'git', 'aws', 'docker', 'kubernetes'];
+    const foundSkillNames = (analysisData.skills_found || []).filter(s => s.category === 'technical').map(s => s.name);
+    const missingSkillNames = allTechnicalSkills.filter(skill => !foundSkillNames.includes(skill));
+
+    return (
+        <>
+            <div className='card'>
+                <div className='card-header'><h2 className='card-title'>Analysis Results</h2></div>
+                <div className='score-container'><div className='score-circle' id='scoreCircle'><div className='score-inner'><div id='scoreValue' className='score-value'>0%</div><div className='score-label'>MATCH</div></div></div></div>
+                <div className='analysis-details'>
+                    <div className='detail-item'><span>Experience Match</span><span>{analysisData.experience_match || '-'}</span></div>
+                    <div className='detail-item'><span>Skills Match</span><span>{analysisData.skills_match_percentage ? analysisData.skills_match_percentage + '%' : '-'}</span></div>
+                    <div className='detail-item'><span>Keyword Density</span><span>{analysisData.keyword_density ? analysisData.keyword_density + '%' : '-'}</span></div>
+                </div>
+            </div>
+            <div className='card'>
+                <div className='card-header'><h2 className='card-title'>Skills Analysis</h2></div>
+                <h3>Matched Skills</h3>
+                <div className='skills-container'>{foundSkillNames.length > 0 ? foundSkillNames.map(s => <div key={s} className='skill-tag'>{s}</div>) : <p>No matched skills</p>}</div>
+                <h3 style={{marginTop: '20px'}}>Missing Skills</h3>
+                <div className='skills-container'>{missingSkillNames.length > 0 ? missingSkillNames.map(s => <div key={s} className='skill-tag missing'>{s}</div>) : <p>All key skills found!</p>}</div>
+            </div>
+            <div className='card'>
+                <div className='card-header'><h2 className='card-title'>AI Recommendations</h2></div>
+                {(analysisData.recommendations || []).length > 0 ? analysisData.recommendations.map((rec, i) => <div key={i} className='recommendation-item'><h4>{rec.title}</h4><p>{rec.description}</p></div>) : <p>No recommendations. Looks good!</p>}
+            </div>
+        </>
+    );
+};
+
+// --- PAGE COMPONENTS ---
+const HomePage = ({ logic }) => {
+    const { files, jobDescription, setJobDescription, isLoading, handleAnalyze, handleDragOver, handleDrop, handleFileChange, handleRemoveFile, resumes, selectedResumeId, displayedAnalysis, formatFileSize, setSelectedResumeId } = logic;
+    return (
+        <div className='main-content'>
+            <div className='left-column'>
+                <div className='card'>
+                    <div className='card-header'><h2 className='card-title'>Upload Resume(s)</h2></div>
+                    <div className='upload-area' onDragOver={handleDragOver} onDrop={handleDrop}>
+                        <h3>Drag & Drop Resumes</h3><p>or</p>
+                        <input type='file' id='resumeFile' style={{display: 'none'}} onChange={handleFileChange} multiple />
+                        <button type='button' className='btn btn-secondary' style={{marginTop: '15px'}} onClick={() => document.getElementById('resumeFile').click()} disabled={isLoading}>Browse Files</button>
+                    </div>
+                    {files.map(file => (<div key={file.name} className='file-info'><span>{file.name} ({formatFileSize(file.size)})</span><button className='btn-outline' onClick={() => handleRemoveFile(file.name)}>Remove</button></div>))}
+                </div>
+                <div className='card'>
+                    <div className='card-header'><h2 className='card-title'>Job Description</h2></div>
+                    <textarea value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} disabled={isLoading}></textarea>
+                    <div style={{marginTop: '15px', display: 'flex', gap: '10px'}}>
+                        <button className='btn' onClick={handleAnalyze} disabled={isLoading || files.length === 0}>{isLoading ? 'Analyzing...' : 'Analyze ' + files.length + ' Resume(s)'}</button>
+                        <button className='btn btn-outline' type='button' onClick={() => { logic.setFiles([]); logic.setJobDescription(''); logic.setResults(null); logic.setResumes([]); logic.setSelectedResumeId(null);}}>Reset</button>
+                    </div>
+                </div>
+                {resumes.length > 0 && <div className='card'>
+                    <div className='card-header'><h2 className='card-title'>Analysis History ({resumes.length})</h2></div>
+                    {resumes.map(r => <div key={r.id} className={'resume-item ' + (r.id === selectedResumeId ? 'selected' : '')} onClick={() => setSelectedResumeId(r.id)}><span>{r.fileName}</span><span style={{fontWeight: 'bold', color: 'var(--success)'}}>{r.analysis.match_score}%</span></div>)}
+                </div>}
+            </div>
+            <div className='right-column'>{renderAnalysisDetails(displayedAnalysis)}</div>
+        </div>
+    );
+};
+const HistoryPage = ({ resumes, setSelectedResumeId, setResults }) => {
+    const navigate = useNavigate();
+    return (
+    <div className='page-content'><div className='card' style={{width: '100%'}}><h2>Full Analysis History ({resumes.length})</h2>{resumes.map(r => (<div key={r.id} className='resume-item' onClick={() => { setSelectedResumeId(r.id); setResults(r.analysis); navigate('/'); }}><span style={{cursor: 'pointer'}}>{r.fileName} - Match: {r.analysis.match_score}%</span><span style={{fontSize: '0.8rem', color: 'var(--gray)'}}>{new Date(r.id).toLocaleString()}</span></div>))}</div></div>
+)};
+const SettingsPage = ({ theme, setTheme }) => (
+    <div className='page-content'><div className='card' style={{width: '100%'}}><h2>Settings</h2><label className='switch-label'><span>Dark Mode (Neon Sci-Fi)</span><div><input type='checkbox' checked={theme === 'dark'} onChange={() => setTheme(theme === 'light' ? 'dark' : 'light')} /><span className='slider round'></span></div></label></div></div>
+);
+const HelpPage = () => (<div className='page-content'><div className='card' style={{width: '100%'}}><h2>Help & Support</h2><p>Developed by Maneeth Rao and Ranganatha P. | Phone: **********</p></div></div>);
+
+
+// --- MAIN APP COMPONENT ---
 function App() {
-    const [currentBackend, setCurrentBackend] = useState('nodejs');
-    const [isServerConnected, setIsServerConnected] = useState(true);
-    const [file, setFile] = useState(null);
-    const [jobDescription, setJobDescription] = useState('We are looking for a skilled Frontend Developer with 3+ years of experience in React.js, JavaScript, and modern web development practices. The ideal candidate should have strong problem-solving skills, experience with responsive design, and familiarity with version control systems like Git. Knowledge of state management libraries (Redux, Context API) and testing frameworks (Jest, Cypress) is a plus.');
+    const [theme, setTheme] = useState('light');
+    const [files, setFiles] = useState([]);
+    const [jobDescription, setJobDescription] = useState('React.js developer with 3+ years of experience in JavaScript.');
     const [isLoading, setIsLoading] = useState(false);
     const [results, setResults] = useState(null);
-    const [apiResponseText, setApiResponseText] = useState('');
-    
-    // Multiple Resume State
     const [resumes, setResumes] = useState([]);
     const [selectedResumeId, setSelectedResumeId] = useState(null);
-    const selectedResume = resumes.find(r => r.id === selectedResumeId)?.analysis || results;
+    const displayedAnalysis = resumes.find(r => r.id === selectedResumeId)?.analysis || results;
+
+    useEffect(() => { document.body.className = theme === 'dark' ? 'dark-mode' : ''; }, [theme]);
     
-    const config = BACKEND_CONFIG[currentBackend];
-
-    // --- UTILITY FUNCTIONS ---
-    const formatFileSize = (bytes) => {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    };
-
+    const formatFileSize = (bytes) => (bytes / 1024).toFixed(2) + ' KB';
+    const handleFilesReceived = useCallback((fileList) => setFiles(prev => [...prev, ...Array.from(fileList)]), []);
+    const handleDragOver = (e) => e.preventDefault();
+    const handleDrop = (e) => { e.preventDefault(); handleFilesReceived(e.dataTransfer.files); };
+    const handleFileChange = (e) => handleFilesReceived(e.target.files);
+    const handleRemoveFile = (fileName) => setFiles(prev => prev.filter(f => f.name !== fileName));
     const updateScoreCircle = useCallback((score) => {
         const circle = document.getElementById('scoreCircle');
         if (circle) {
-            circle.style.background = 'conic-gradient(var(--success) 0% ' + score + '%, var(--gray-light) ' + score + '% 100%)';
+            const safeScore = score || 0;
+            circle.style.background = 'conic-gradient(var(--success) 0% ' + safeScore + '%, var(--gray-light) ' + safeScore + '% 100%)';
+            const scoreValueEl = document.getElementById('scoreValue');
+            if (scoreValueEl) scoreValueEl.textContent = safeScore + '%';
         }
     }, []);
 
-    // --- CONNECTION & ANALYSIS LOGIC ---
-    const testServerConnection = useCallback(async (backendKey = currentBackend) => {
-        const testConfig = BACKEND_CONFIG[backendKey];
-        
-        setIsServerConnected(false);
-        const statusTextElement = document.getElementById('statusText');
-        const statusIndicatorElement = document.getElementById('statusIndicator');
-
-        if (statusTextElement) statusTextElement.textContent = 'Checking connection...';
-        if (statusIndicatorElement) statusIndicatorElement.classList.remove('connected');
-        
-        try {
-            const response = await fetch(testConfig.baseUrl, { method: 'GET' });
-            
-            if (response.status === 200 || response.status === 404) {
-                setIsServerConnected(true);
-                if (statusIndicatorElement) statusIndicatorElement.classList.add('connected');
-                if (statusTextElement) statusTextElement.textContent = 'Connected to ' + testConfig.name;
-                return true;
-            } else {
-                throw new Error('Server returned ' + response.status);
-            }
-        } catch (error) {
-            if (statusTextElement) statusTextElement.textContent = 'Connection failed: ' + error.message;
-            if (backendKey === 'python') {
-                console.error('Python Flask connection failed on startup. Using Node.js.'); 
-            }
-            return false;
-        }
-    }, [currentBackend]);
+    useEffect(() => { if(displayedAnalysis) updateScoreCircle(displayedAnalysis.match_score); }, [displayedAnalysis, updateScoreCircle]);
 
     const handleAnalyze = async () => {
-        if (!isServerConnected) {
-             alert('Please ensure the server is connected before analyzing.');
-             return;
-        }
-
-        if (!file) {
-            alert('Please upload a resume file.');
-            return;
-        }
-        if (!jobDescription.trim()) {
-            alert('Please provide a job description.');
-            return;
-            
-        }
-
+        if (files.length === 0 || !jobDescription.trim()) return alert('Please provide files and a job description.');
         setIsLoading(true);
-        setApiResponseText('');
-
-        try {
-            const formData = new FormData();
-            formData.append('resume', file, file.name); 
-            formData.append('jobDescription', jobDescription); 
-
-            const response = await fetch(config.baseUrl + config.analyzeEndpoint, {
-                method: 'POST',
-                body: formData
-            });
-
-            const result = await response.json();
-            setApiResponseText(JSON.stringify(result, null, 2));
-
-            if (response.ok) {
-                const newResumeId = Date.now();
-                const newResume = {
-                    id: newResumeId,
-                    fileName: file.name,
-                    analysis: result,
-                };
-                
-                setResumes(prev => [...prev, newResume]);
-                setSelectedResumeId(newResumeId);
-                setResults(result); 
-            } else {
-                throw new Error(result.error || 'Analysis failed');
-            }
-        } catch (error) {
-            alert('Error during analysis: ' + error.message);
-        } finally {
-            setIsLoading(false);
+        const newResumes = [];
+        for (const file of files) {
+            try {
+                const formData = new FormData();
+                formData.append('resume', file);
+                formData.append('jobDescription', jobDescription);
+                const response = await fetch(BACKEND_CONFIG.nodejs.baseUrl + BACKEND_CONFIG.nodejs.analyzeEndpoint, { method: 'POST', body: formData });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error);
+                const newEntry = { id: Date.now() + Math.random(), fileName: file.name, analysis: {...result, backendUsedKey: 'nodejs'} };
+                newResumes.push(newEntry);
+            } catch (error) { alert('Analysis failed for ' + file.name + ': ' + error.message); }
         }
+        if (newResumes.length > 0) {
+            setResumes(prev => [...prev, ...newResumes]);
+            const lastResult = newResumes[newResumes.length - 1];
+            setSelectedResumeId(lastResult.id);
+            setResults(lastResult.analysis);
+        }
+        setIsLoading(false);
+        setFiles([]);
     };
     
-    const handleBackendSelect = (backendKey) => {
-        setCurrentBackend(backendKey);
-        if(backendKey === 'nodejs') setIsServerConnected(true); 
-        else setIsServerConnected(false);
-        testServerConnection(backendKey);
-    };
+    const logicProps = { files, jobDescription, setJobDescription, isLoading, handleAnalyze, handleDragOver, handleDrop, handleFileChange, handleRemoveFile, resumes, selectedResumeId, displayedAnalysis, formatFileSize, updateScoreCircle, setSelectedResumeId, renderAnalysisDetails };
 
-    const handleFileChange = (e) => {
-        const uploadedFile = e.target.files[0];
-        if (uploadedFile) {
-            setFile(uploadedFile);
-        }
-    };
-
-    const handleRemoveFile = () => {
-        setFile(null);
-    };
-    
-    // Initial check and cleanup
-    useEffect(() => {
-        testServerConnection();
-    }, [testServerConnection]);
-
-    useEffect(() => {
-        if(results) updateScoreCircle(results.match_score || 0);
-    }, [results, updateScoreCircle]);
-
-    // --- RENDER HELPERS ---
-    const renderAnalysisDetails = (data) => {
-        const analysisData = data || { match_score: 0, experience_match: '-', skills_match_percentage: '-', keyword_density: '-', backendUsed: '-', skills_found: [], recommendations: [] };
-
-        const allTechnicalSkills = ['javascript', 'python', 'java', 'react', 'node.js', 'html', 'css', 
-                                  'sql', 'mongodb', 'git', 'aws', 'docker', 'kubernetes'];
-        const foundSkillNames = analysisData.skills_found.filter(s => s.category === 'technical').map(s => s.name);
-        const missingSkillNames = allTechnicalSkills.filter(skill => !foundSkillNames.includes(skill));
-
-        return (
-            <>
-                <div className="card">
-                    <div className="card-header"><h2 className="card-title">Analysis Results</h2><i className="fas fa-chart-bar" style={{color: 'var(--success)'}}></i></div>
-                    <div className="score-container">
-                        <div className="score-circle" id="scoreCircle">
-                            <div className="score-inner">
-                                <div className="score-value">{analysisData.match_score || 0}%</div>
-                                <div className="score-label">MATCH</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="analysis-details">
-                        <div className="detail-item"><span className="detail-name">Experience Match</span><span className="detail-value" id="experienceMatch">{analysisData.experience_match || '-'}</span></div>
-                        <div className="detail-item"><span className="detail-name">Skills Match</span><span className="detail-value" id="skillsMatch">{analysisData.skills_match_percentage ? analysisData.skills_match_percentage + '%' : '-'}</span></div>
-                        <div className="detail-item"><span className="detail-name">Education Match</span><span className="detail-value" id="educationMatch">-</span></div>
-                        <div className="detail-item"><span className="detail-name">Keyword Density</span><span className="detail-value" id="keywordDensity">{analysisData.keyword_density ? analysisData.keyword_density + '%' : '-'}</span></div>
-                        <div className="detail-item"><span className="detail-name">Backend Used</span><span className="detail-value" id="backendUsed">{analysisData.backendUsed || (selectedResume ? config.name : '-')}</span></div>
-                    </div>
-                </div>
-
-                <div className="card">
-                    <div className="card-header"><h2 className="card-title">Skills Analysis</h2><i className="fas fa-tools" style={{color: 'var(--warning)'}}></i></div>
-                    <h3 style={{marginBottom: '10px'}}>Matched Skills</h3>
-                    <div className="skills-container" id="matchedSkills">
-                        {foundSkillNames.length > 0 ? foundSkillNames.map(s => <div key={s} className="skill-tag">{s}</div>) : <div className="skill-tag">No technical skills found</div>}
-                    </div>
-                    <h3 style={{margin: '20px 0 10px'}}>Missing Skills</h3>
-                    <div className="skills-container" id="missingSkills">
-                        {missingSkillNames.length > 0 ? missingSkillNames.map(s => <div key={s} className="skill-tag missing">{s}</div>) : <div className="skill-tag missing">All key skills found!</div>}
-                    </div>
-                </div>
-                
-                <div className="card">
-                    <div className="card-header"><h2 className="card-title">AI Recommendations</h2><i className="fas fa-robot" style={{color: 'var(--primary)'}}></i></div>
-                    <div id="recommendationsList">
-                        {analysisData.recommendations && analysisData.recommendations.length > 0 ? (
-                            analysisData.recommendations.map((rec, index) => (
-                                <div key={index} className="recommendation-item">
-                                    <div className="rec-title">{rec.title}</div>
-                                    <p>{rec.description}</p>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="recommendation-item">
-                                <div className="rec-title">Upload your resume to get started</div>
-                                <p>Please upload your resume and provide a job description to receive personalized AI recommendations.</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </>
-        );
-    };
-
-    // --- MAIN RENDER ---
     return (
-        <>
+        <div className={'App ' + theme}>
             <header>
-                <div className="container">
-                    <div className="header-content">
-                        <div className="logo"><i className="fas fa-file-alt"></i><span>ResumeAI</span></div>
-                        <nav><ul><li><a href="#"><i className="fas fa-home"></i> Home</a></li><li><a href="#"><i className="fas fa-history"></i> History</a></li><li><a href="#"><i className="fas fa-cog"></i> Settings</a></li><li><a href="#"><i className="fas fa-question-circle"></i> Help</a></li></ul></nav>
+                <div className='container'>
+                    <div className='header-content'>
+                        <div className='logo'><i className='fas fa-file-alt'></i><span>ResumeAI</span></div>
+                        <nav><ul><li><NavLink to='/' className={({isActive}) => isActive ? 'active' : ''}>Home</NavLink></li><li><NavLink to='/history' className={({isActive}) => isActive ? 'active' : ''}>History</NavLink></li><li><NavLink to='/settings' className={({isActive}) => isActive ? 'active' : ''}>Settings</NavLink></li><li><NavLink to='/help' className={({isActive}) => isActive ? 'active' : ''}>Help</NavLink></li></ul></nav>
                     </div>
                 </div>
             </header>
-
-            <div className="container">
-                {/* Configuration Panel */}
-                <div className="config-panel">
-                    <div className="config-title">Backend Configuration</div>
-                    <div className="backend-selector">
-                        {Object.keys(BACKEND_CONFIG).map(key => (
-                            <div 
-                                key={key}
-                                className={'backend-option ' + (currentBackend === key ? 'active' : '')} 
-                                data-backend={key}
-                                onClick={() => handleBackendSelect(key)}
-                            >
-                                <i className={'fab fa-' + (key === 'python' ? 'python' : 'node-js')}></i>
-                                <span>{BACKEND_CONFIG[key].name} ({BACKEND_CONFIG[key].baseUrl.split(':').pop()})</span>
-                            </div>
-                        ))}
-                        <div className="server-status">
-                            <div className={'status-indicator ' + (isServerConnected ? 'connected' : '')} id="statusIndicator"></div>
-                            <span id="statusText">Checking connection...</span>
-                        </div>
-                        <button className="btn btn-success" id="testConnection" onClick={() => testServerConnection()}>
-                            <i className="fas fa-plug"></i> Test Connection
-                        </button>
-                    </div>
-                </div>
-
-                {/* Main Content */}
-                <div className="main-content">
-                    {/* Left Column: Input Section */}
-                    <div className="left-column">
-                        <div className="card">
-                            <div className="card-header"><h2 className="card-title">Upload Resume(s)</h2><i className="fas fa-file-pdf" style={{color: 'var(--primary)'}}></i></div>
-                            <form id="uploadForm" encType="multipart/form-data">
-                                <div className="upload-area" id="uploadArea">
-                                    <i className="fas fa-cloud-upload-alt"></i>
-                                    <h3 className="upload-text">Drag & Drop your resume here</h3>
-                                    <p>Supported formats: PDF, DOC, DOCX, TXT (Max 5MB)</p>
-                                    <input type="file" id="resumeFile" name="resume" accept=".pdf,.doc,.docx,.txt" style={{display: 'none'}} onChange={handleFileChange} />
-                                    <button type="button" className="btn btn-secondary" style={{marginTop: '15px'}} onClick={() => document.getElementById('resumeFile').click()} disabled={isLoading}>
-                                        <i className="fas fa-folder-open"></i> Browse Files
-                                    </button>
-                                </div>
-                                {file && (
-                                    <div className="file-info" id="fileInfo">
-                                        <i className="fas fa-file-pdf" style={{color: 'var(--danger)'}}></i>
-                                        <div>
-                                            <div id="fileName">{file.name}</div>
-                                            <div id="fileSize" style={{fontSize: '0.9rem', color: 'var(--gray)'}}>{formatFileSize(file.size)}</div>
-                                        </div>
-                                        <button type="button" className="btn btn-outline" style={{marginLeft: 'auto'}} onClick={handleRemoveFile}>
-                                            <i className="fas fa-times"></i> Remove
-                                        </button>
-                                    </div>
-                                )}
-                            </form>
-                        </div>
-                        <div className="card">
-                            <div className="card-header"><h2 className="card-title">Job Description</h2><i className="fas fa-briefcase" style={{color: 'var(--secondary)'}}></i></div>
-                            <div className="job-description">
-                                <textarea id="jobDescription" placeholder="Paste the job description here..." value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} disabled={isLoading}></textarea>
-                            </div>
-                            <div style={{marginTop: '15px', display: 'flex', gap: '10px'}}>
-                                <button className="btn" id="analyzeBtn" type="button" onClick={handleAnalyze} disabled={isLoading || !file}>
-                                    <i className="fas fa-chart-line"></i> {isLoading ? 'Analyzing...' : 'Analyze Resume'}
-                                </button>
-                                <button className="btn btn-outline" type="button" onClick={() => {setFile(null); setJobDescription(''); setResults(null); setResumes([]); setSelectedResumeId(null);}} disabled={isLoading}>
-                                    <i className="fas fa-redo"></i> Reset
-                                </button>
-                            </div>
-                        </div>
-
-                        {isLoading && (
-                            <div className="loading" id="loadingIndicator" style={{display: 'block'}}>
-                                <div className="spinner"></div>
-                                <p>Analyzing your resume with AI...</p>
-                                <p style={{fontSize: '0.9rem', color: 'var(--gray)'}}>This may take a few seconds</p>
-                            </div>
-                        )}
-                        <div className="api-response" id="apiResponse" style={{display: apiResponseText ? 'block' : 'none'}}>
-                            <strong>API Response:</strong>
-                            <pre id="responseContent">{apiResponseText}</pre>
-                        </div>
-
-                        {/* Analysis Queue Panel (Added to left column for two-column structure) */}
-                        <div className="card" style={{marginTop: '20px'}}>
-                            <div className="card-header"><h2 className="card-title">Analysis Queue ({resumes.length})</h2><i className="fas fa-list-alt" style={{color: 'var(--warning)'}}></i></div>
-                            {resumes.length > 0 ? (
-                                resumes.map(resume => (
-                                    <div
-                                        key={resume.id}
-                                        className={'resume-item ' + (resume.id === selectedResumeId ? 'selected' : '')}
-                                        onClick={() => {setResults(resume.analysis); setSelectedResumeId(resume.id); updateScoreCircle(resume.analysis.match_score || 0);}}
-                                        style={{display: 'flex', justifyContent: 'space-between', padding: '10px', marginBottom: '8px', background: 'var(--gray-light)', borderRadius: '4px', cursor: 'pointer', borderLeft: resume.id === selectedResumeId ? '5px solid var(--primary)' : '5px solid transparent'}}
-                                    >
-                                        <span>{resume.fileName}</span>
-                                        <span style={{fontWeight: 'bold', color: 'var(--success)'}}>{resume.analysis.match_score}%</span>
-                                    </div>
-                                ))
-                            ) : (
-                                <p style={{color: 'var(--gray)'}}>No resumes in queue. Upload one to start analysis.</p>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Right Column: Results Section */}
-                    <div className="right-column">
-                        {renderAnalysisDetails(selectedResume)}
-                    </div>
-                </div>
+            <div className='container'>
+                <Routes>
+                    <Route path='/' element={<HomePage logic={logicProps} />} />
+                    <Route path='/history' element={<HistoryPage resumes={resumes} setSelectedResumeId={setSelectedResumeId} setResults={setResults} />} />
+                    <Route path='/settings' element={<SettingsPage theme={theme} setTheme={setTheme} />} />
+                    <Route path='/help' element={<HelpPage />} />
+                </Routes>
             </div>
-
-            <footer><div className="container"><div className="footer-content"><div className="footer-section"><h3>ResumeAI</h3><p>Leveraging artificial intelligence to help job seekers optimize their resumes and improve their chances of landing interviews.</p></div><div className="footer-section"><h3>Quick Links</h3><ul className="footer-links"><li><a href="#">Home</a></li><li><a href="#">How It Works</a></li><li><a href="#">Pricing</a></li><li><a href="#">Blog</a></li></ul></div><div className="footer-section"><h3>Legal</h3><ul className="footer-links"><li><a href="#">Privacy Policy</a></li><li><a href="#">Terms of Service</a></li><li><a href="#">Data Security</a></li></ul></div><div className="footer-section"><h3>Contact Us</h3><ul className="footer-links"><li><a href="#"><i className="fas fa-envelope"></i> support@resumeai.com</a></li><li><a href="#"><i className="fas fa-phone"></i> +1 (555) 123-4567</a></li><li><a href="#"><i className="fas fa-map-marker-alt"></i> San Francisco, CA</a></li></ul></div></div><div className="copyright"><p>&copy; 2023 ResumeAI. All rights reserved.</p></div></div></footer>
-        </>
+            <footer><div className='container'><div className='copyright'><p>&copy; {new Date().getFullYear()} ResumeAI Project | Developers: Maneeth Rao, Ranganatha P.</p></div></div></footer>
+        </div>
     );
 }
 
-export default App;
+// Main Export
+function AppWrapper() {
+    return (
+        <BrowserRouter>
+            <App />
+        </BrowserRouter>
+    );
+}
+export default AppWrapper;
