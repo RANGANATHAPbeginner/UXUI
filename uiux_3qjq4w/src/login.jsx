@@ -111,7 +111,7 @@ const AuthPage = () => {
           box-sizing: border-box;
         }
 
-        /* Body Styles - White background with grid */
+        /* Body Styles - WHITE background with grid */
         body {
           background: #ffffff !important;
           font-family: 'Segoe UI', 'SF Mono', 'Monaco', 'Inconsolata', monospace !important;
@@ -129,9 +129,10 @@ const AuthPage = () => {
           min-height: 100vh;
           padding: 20px;
           position: relative;
+          background: #ffffff;
         }
 
-        /* Grid Background - Animated darker grid pattern on white */
+        /* Grid Background - Animated grid pattern on WHITE background */
         .grid-background {
           position: fixed;
           top: 0;
@@ -139,9 +140,10 @@ const AuthPage = () => {
           width: 100%;
           height: 100%;
           background-image: 
-            linear-gradient(rgba(0, 0, 0, 0.15) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 0, 0, 0.15) 1px, transparent 1px);
+            linear-gradient(rgba(0, 0, 0, 0.08) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 0, 0, 0.08) 1px, transparent 1px);
           background-size: 50px 50px;
+          background-color: #ffffff;
           z-index: 0;
           animation: gridMove 20s linear infinite;
         }
@@ -563,13 +565,13 @@ const AuthPage = () => {
           }
           
           .main-title {
-            fontSize: 1.75rem;
-            letterSpacing: 2px;
+            font-size: 1.75rem;
+            letter-spacing: 2px;
           }
           
           .subtitle {
-            fontSize: 0.7rem;
-            letterSpacing: 2px;
+            font-size: 0.7rem;
+            letter-spacing: 2px;
           }
           
           .button-content {
@@ -577,7 +579,7 @@ const AuthPage = () => {
           }
           
           .footer {
-            fontSize: 0.65rem;
+            font-size: 0.65rem;
           }
         }
       `}</style>
