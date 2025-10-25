@@ -56,7 +56,10 @@ app.post('/api/analyze', upload.single('resume'), (req, res) => {
     const pythonScriptPath = path.join(backendDir, 'app.py');
 
     // 3. Spawn Python process to run the analysis script
-    const python = spawn('python', [pythonScriptPath, tempFilePath, jobDescription]);
+    // --- THIS IS THE FIX ---
+    // Changed 'python' to 'python3' to ensure it uses a modern Python version
+    // and avoids conflicts with system-installed Python 2.
+    const python = spawn('python3', [pythonScriptPath, tempFilePath, jobDescription]);
 
     // 4. Collect data output from Python
     python.stdout.on('data', (data) => {
