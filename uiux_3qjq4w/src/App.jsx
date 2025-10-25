@@ -7,29 +7,170 @@ import AuthPage from './Login';
 import HistoryPage from './History';
 import SettingsPage from './Settings';
 import HelpPage from './Help';
-import AnalysisChart from './AnalysisChart'; // NEW: Import the chart component
+import AnalysisChart from './AnalysisChart';
 
 const BACKEND_CONFIG = {
     nodejs: { name: 'Node.js Express', baseUrl: 'http://localhost:3000', analyzeEndpoint: '/api/analyze' }
 };
 
-const renderAnalysisDetails = (data) => {
-    // ... (This function remains unchanged)
-    const analysisData = data || { match_score: 0, experience_match: '-', skills_match_percentage: '-', skills_found: [], recommendations: [] };
-    const allTechSkills = ['javascript', 'python', 'java', 'react', 'node.js', 'html', 'css', 'sql', 'mongodb', 'git', 'aws', 'docker', 'kubernetes'];
+const renderAnalysisDetails = (data, jobDescription) => {
+    const analysisData = data || { 
+        match_score: 0, 
+        experience_match: '-', 
+        skills_match_percentage: '-', 
+        skills_found: [], 
+        recommendations: [] 
+    };
+    
+    // Advanced skill detection in job description
+    const detectSkillsInJD = () => {
+        const skillPatterns = {
+            javascript: ['javascript', 'js', 'es6', 'ecmascript'],
+            python: ['python', 'django', 'flask'],
+            java: ['java', 'spring', 'j2ee'],
+            react: ['react', 'react.js', 'reactjs'],
+            'node.js': ['node', 'node.js', 'nodejs', 'express.js'],
+            html: ['html', 'html5'],
+            css: ['css', 'css3', 'sass', 'scss', 'less'],
+            sql: ['sql', 'mysql', 'postgresql', 'oracle', 'database'],
+            mongodb: ['mongodb', 'mongo', 'nosql'],
+            git: ['git', 'github', 'gitlab'],
+            aws: ['aws', 'amazon web services', 's3', 'ec2', 'lambda'],
+            docker: ['docker', 'container'],
+            kubernetes: ['kubernetes', 'k8s']
+        };
+
+        const jdLower = jobDescription.toLowerCase();
+        const detectedSkills = [];
+
+        Object.entries(skillPatterns).forEach(([skill, patterns]) => {
+            if (patterns.some(pattern => jdLower.includes(pattern))) {
+                detectedSkills.push(skill);
+            }
+        });
+
+        return detectedSkills;
+    };
+
+    const skillsInJD = detectSkillsInJD();
+    const shouldShowSkills = skillsInJD.length > 0 || (analysisData.skills_found && analysisData.skills_found.length > 0);
+    
     const foundSkills = (analysisData.skills_found || []).filter(s => s.category === 'technical').map(s => s.name);
-    const missingSkills = allTechSkills.filter(s => !foundSkills.includes(s));
+    const missingSkills = skillsInJD.filter(s => !foundSkills.includes(s));
+    
     return (
         <>
-            <div className='card'><div className='card-header'><h2 className='card-title'>Analysis Results</h2></div><div className='score-container'><div className='score-circle' id='scoreCircle'><div className='score-inner'><div id='scoreValue' className='score-value'>0%</div><div className='score-label'>MATCH</div></div></div></div><div className='analysis-details'><div className='detail-item'><span>Experience Match</span><span>{analysisData.experience_match || '-'}</span></div><div className='detail-item'><span>Skills Match</span><span>{analysisData.skills_match_percentage ? (analysisData.skills_match_percentage + '%') : '-'}</span></div></div></div>
-            <div className='card'><div className='card-header'><h2 className='card-title'>Skills Analysis</h2></div><h3>Matched Skills</h3><div className='skills-container'>{foundSkills.length > 0 ? foundSkills.map(s => <div key={s} className='skill-tag'>{s}</div>) : <p>No matched skills found.</p>}</div><h3 style={{marginTop: '20px'}}>Missing Skills</h3><div className='skills-container'>{missingSkills.length > 0 ? missingSkills.map(s => <div key={s} className='skill-tag missing'>{s}</div>) : <p>All key skills found!</p>}</div></div>
-            <div className='card'><div className='card-header'><h2 className='card-title'>AI Recommendations</h2></div>{(analysisData.recommendations || []).length > 0 ? analysisData.recommendations.map((rec, i) => <div key={i} className='recommendation-item'><h4>{rec.title}</h4><p>{rec.description}</p></div>) : <p>No recommendations. Looks good!</p>}</div>
+            <div className='card'>
+                <div className='card-header'>
+                    <h2 className='card-title'>Analysis Results</h2>
+                </div>
+                <div className='score-container'>
+                    <div className='score-circle' id='scoreCircle'>
+                        <div className='score-inner'>
+                            <div id='scoreValue' className='score-value'>0%</div>
+                            <div className='score-label'>MATCH SCORE</div>
+                        </div>
+                    </div>
+                </div>
+                <div className='analysis-details'>
+                    <div className='detail-item'>
+                        <span>Experience Match</span>
+                        <span>{analysisData.experience_match || '-'}</span>
+                    </div>
+                    {shouldShowSkills && (
+                        <div className='detail-item'>
+                            <span>Skills Match</span>
+                            <span>
+                                {analysisData.skills_match_percentage ? 
+                                    (analysisData.skills_match_percentage + '%') : 
+                                    foundSkills.length > 0 && skillsInJD.length > 0 ? 
+                                    Math.round((foundSkills.length / skillsInJD.length) * 100) + '%' : 
+                                    '-'
+                                }
+                            </span>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {shouldShowSkills && (
+                <div className='card'>
+                    <div className='card-header'>
+                        <h2 className='card-title'>
+                            Skills Analysis
+                            {skillsInJD.length > 0 && (
+                                <span style={{ fontSize: '0.9rem', color: 'var(--gray)', marginLeft: '8px' }}>
+                                    ({foundSkills.length}/{skillsInJD.length} matched)
+                                </span>
+                            )}
+                        </h2>
+                    </div>
+                    
+                    {skillsInJD.length > 0 ? (
+                        <>
+                            {foundSkills.length > 0 && (
+                                <>
+                                    <h3 style={{ fontSize: '1rem', marginBottom: '12px', color: 'var(--primary)' }}>Matched Skills</h3>
+                                    <div className='skills-container'>
+                                        {foundSkills.map(s => <div key={s} className='skill-tag'>{s}</div>)}
+                                    </div>
+                                </>
+                            )}
+                            
+                            {missingSkills.length > 0 && (
+                                <>
+                                    <h3 style={{ marginTop: '20px', fontSize: '1rem', marginBottom: '12px', color: 'var(--warning)' }}>Missing Skills</h3>
+                                    <div className='skills-container'>
+                                        {missingSkills.map(s => <div key={s} className='skill-tag missing'>{s}</div>)}
+                                        <p style={{ fontSize: '0.8rem', color: 'var(--gray)', width: '100%', marginTop: '8px' }}>
+                                            These skills were mentioned in the job description but not found in the resume.
+                                        </p>
+                                    </div>
+                                </>
+                            )}
+                            
+                            {foundSkills.length === 0 && (
+                                <p className='text-muted'>No skills from the job description were found in the resume.</p>
+                            )}
+                        </>
+                    ) : (
+                        <p className='text-muted'>
+                            No specific skills mentioned in job description. 
+                            {foundSkills.length > 0 && ' Found skills in resume:'}
+                        </p>
+                    )}
+                    
+                    {/* Show found skills even if no JD skills, but only if we have some */}
+                    {skillsInJD.length === 0 && foundSkills.length > 0 && (
+                        <>
+                            <h3 style={{ fontSize: '1rem', marginBottom: '12px', color: 'var(--primary)' }}>Skills Found in Resume</h3>
+                            <div className='skills-container'>
+                                {foundSkills.map(s => <div key={s} className='skill-tag'>{s}</div>)}
+                            </div>
+                        </>
+                    )}
+                </div>
+            )}
+
+            <div className='card'>
+                <div className='card-header'>
+                    <h2 className='card-title'>AI Recommendations</h2>
+                </div>
+                {(analysisData.recommendations || []).length > 0 ? 
+                    analysisData.recommendations.map((rec, i) => (
+                        <div key={i} className='recommendation-item'>
+                            <h4>{rec.title}</h4>
+                            <p>{rec.description}</p>
+                        </div>
+                    )) : 
+                    <p className='text-muted'>No recommendations available.</p>
+                }
+            </div>
         </>
     );
 };
 
 const HomePage = ({ logic }) => {
-    // NEW: Destructure new props for upload mode and filtering
     const { 
         files, jobDescription, setJobDescription, isLoading, handleAnalyze, handleDragOver, handleDrop, 
         handleFileChange, handleRemoveFile, displayedResumes, selectedResumeId, displayedAnalysis, 
@@ -37,58 +178,163 @@ const HomePage = ({ logic }) => {
         uploadMode, setUploadMode, filterRange, setFilterRange, resumes 
     } = logic;
 
+    const [dragOver, setDragOver] = useState(false);
+
+    const handleDragOverEnhanced = (e) => {
+        e.preventDefault();
+        setDragOver(true);
+        handleDragOver(e);
+    };
+
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        setDragOver(false);
+    };
+
+    const handleDropEnhanced = (e) => {
+        e.preventDefault();
+        setDragOver(false);
+        handleDrop(e);
+    };
+
     return (
         <div className='main-content'>
             <div className='left-column'>
-                {/* NEW: Upload Mode Toggle */}
                 <div className='card'>
                     <div className='card-header'>
-                        <div className='toggle-buttons'>
-                            <button onClick={() => setUploadMode('single')} className={uploadMode === 'single' ? 'active' : ''}>Single Resume</button>
-                            <button onClick={() => setUploadMode('multiple')} className={uploadMode === 'multiple' ? 'active' : ''}>Multiple Resumes</button>
-                        </div>
+                        <h2 className='card-title'>Upload Resume</h2>
+                    </div>
+                    
+                    <div className='toggle-buttons'>
+                        <button 
+                            onClick={() => setUploadMode('single')} 
+                            className={uploadMode === 'single' ? 'active' : ''}
+                        >
+                            Single Resume
+                        </button>
+                        <button 
+                            onClick={() => setUploadMode('multiple')} 
+                            className={uploadMode === 'multiple' ? 'active' : ''}
+                        >
+                            Multiple Resumes
+                        </button>
                     </div>
 
-                    {/* Single Upload UI */}
-                    {uploadMode === 'single' && (
-                        <div className='upload-area' onDragOver={handleDragOver} onDrop={handleDrop}>
-                            <h3>Drag & Drop a Resume</h3><p>or</p>
-                            <input type='file' id='resumeFileSingle' style={{display: 'none'}} onChange={handleFileChange} />
-                            <button type='button' className='btn btn-secondary' onClick={() => document.getElementById('resumeFileSingle').click()} disabled={isLoading}>Browse File</button>
-                        </div>
-                    )}
+                    <div 
+                        className={`upload-area ${dragOver ? 'drag-over' : ''}`}
+                        onDragOver={handleDragOverEnhanced}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDropEnhanced}
+                    >
+                        <div className='upload-icon'>📄</div>
+                        <h3>Drag & Drop {uploadMode === 'single' ? 'a Resume' : 'Resumes'}</h3>
+                        <p>or</p>
+                        <input 
+                            type='file' 
+                            id={uploadMode === 'single' ? 'resumeFileSingle' : 'resumeFileMultiple'} 
+                            style={{display: 'none'}} 
+                            onChange={handleFileChange} 
+                            multiple={uploadMode === 'multiple'}
+                            accept=".pdf,.doc,.docx"
+                        />
+                        <button 
+                            type='button' 
+                            className='btn btn-secondary' 
+                            onClick={() => document.getElementById(uploadMode === 'single' ? 'resumeFileSingle' : 'resumeFileMultiple').click()} 
+                            disabled={isLoading}
+                        >
+                            {uploadMode === 'single' ? 'Browse File' : '+ Add Files'}
+                        </button>
+                        <p style={{ fontSize: '0.8rem', marginTop: '12px', color: 'var(--gray)' }}>
+                            Supported formats: PDF, DOC, DOCX
+                        </p>
+                    </div>
 
-                    {/* Multiple Upload UI */}
-                    {uploadMode === 'multiple' && (
-                        <div className='upload-area' onDragOver={handleDragOver} onDrop={handleDrop}>
-                            <h3>Drag & Drop Resumes</h3><p>or</p>
-                            <input type='file' id='resumeFileMultiple' style={{display: 'none'}} onChange={handleFileChange} multiple />
-                            <button type='button' className='btn btn-secondary' onClick={() => document.getElementById('resumeFileMultiple').click()} disabled={isLoading}>
-                                + ADD
-                            </button>
+                    {files.map(file => (
+                        <div key={file.name} className='file-info'>
+                            <span>{file.name} ({formatFileSize(file.size)})</span>
+                            <div className="file-actions">
+                                <button 
+                                    className="action-btn danger" 
+                                    onClick={() => handleRemoveFile(file.name)}
+                                    disabled={isLoading}
+                                    title="Remove file"
+                                >
+                                    Remove
+                                </button>
+                            </div>
                         </div>
-                    )}
-                    {files.map(file => (<div key={file.name} className='file-info'><span>{file.name} ({formatFileSize(file.size)})</span><button className='btn-outline' onClick={() => handleRemoveFile(file.name)}>Remove</button></div>))}
+                    ))}
                 </div>
 
-                <div className='card'><div className='card-header'><h2 className='card-title'>Job Description</h2></div><textarea value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} disabled={isLoading}></textarea><div style={{marginTop: '15px', display: 'flex', gap: '10px'}}><button className='btn' onClick={handleAnalyze} disabled={isLoading || files.length === 0}>{isLoading ? 'Analyzing...' : 'Analyze ' + files.length + ' Resume(s)'}</button><button className='btn btn-outline' onClick={() => { logic.setFiles([]); logic.setJobDescription(''); logic.setResults(null); logic.setResumes([]); logic.setSelectedResumeId(null); setReportGenerated(false); setFilterRange(null); }}>Reset</button></div></div>
+                <div className='card'>
+                    <div className='card-header'>
+                        <h2 className='card-title'>Job Description</h2>
+                    </div>
+                    <textarea 
+                        value={jobDescription} 
+                        onChange={(e) => setJobDescription(e.target.value)} 
+                        disabled={isLoading}
+                        placeholder="Enter the job description here..."
+                    ></textarea>
+                    <div style={{ marginTop: '16px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                        <button 
+                            className='btn' 
+                            onClick={handleAnalyze} 
+                            disabled={isLoading || files.length === 0}
+                        >
+                            {isLoading ? 'Analyzing...' : `Analyze ${files.length} Resume${files.length !== 1 ? 's' : ''}`}
+                        </button>
+                        <button 
+                            className='btn-outline' 
+                            onClick={() => { 
+                                logic.setFiles([]); 
+                                logic.setJobDescription(''); 
+                                logic.setResults(null); 
+                                logic.setResumes([]); 
+                                logic.setSelectedResumeId(null); 
+                                setReportGenerated(false); 
+                                setFilterRange(null); 
+                            }}
+                            disabled={isLoading}
+                        >
+                            Reset All
+                        </button>
+                    </div>
+                </div>
                 
-                {/* NEW: Show Chart for multiple resumes */}
                 {reportGenerated && uploadMode === 'multiple' && resumes.length > 0 && (
                     <div className='card'>
-                        <div className='card-header'><h2 className='card-title'>Score Distribution</h2></div>
+                        <div className='card-header'>
+                            <h2 className='card-title'>Score Distribution</h2>
+                        </div>
                         <AnalysisChart resumes={resumes} onBarClick={(range) => setFilterRange(range)} />
-                        {filterRange && <button className='btn-outline' style={{marginTop: '10px'}} onClick={() => setFilterRange(null)}>Clear Filter</button>}
+                        {filterRange && (
+                            <button 
+                                className='btn-outline' 
+                                style={{ marginTop: '12px', width: '100%' }} 
+                                onClick={() => setFilterRange(null)}
+                            >
+                                Clear Filter
+                            </button>
+                        )}
                     </div>
                 )}
                 
-                {reportGenerated && (
+                {reportGenerated && displayedResumes.length > 0 && (
                     <div className='card ranking-block'>
-                        <div className='card-header'><h2 className='card-title'>Analysis Ranking Report</h2></div>
-                        {/* MODIFIED: Use the new displayedResumes list */}
+                        <div className='card-header'>
+                            <h2 className='card-title'>Ranking Report</h2>
+                        </div>
                         {displayedResumes.map((resume, index) => (
-                            <div key={resume.id} className='rank-item' onClick={() => setSelectedResumeId(resume.id)}>
-                                <div className='rank-position'>{index + 1}</div>
+                            <div 
+                                key={resume.id} 
+                                className={`rank-item ${selectedResumeId === resume.id ? 'selected' : ''}`}
+                                onClick={() => setSelectedResumeId(resume.id)}
+                            >
+                                <div className={`rank-position ${index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : ''}`}>
+                                    {index + 1}
+                                </div>
                                 <div className='rank-details'>
                                     <div>{resume.fileName}</div>
                                     <div className='rank-score'>{resume.analysis.match_score}% Match</div>
@@ -98,7 +344,21 @@ const HomePage = ({ logic }) => {
                     </div>
                 )}
             </div>
-            <div className='right-column'>{renderAnalysisDetails(displayedAnalysis)}</div>
+            
+            <div className='right-column'>
+                {displayedAnalysis ? (
+                    renderAnalysisDetails(displayedAnalysis, jobDescription)
+                ) : (
+                    <div className='card'>
+                        <div className='card-header'>
+                            <h2 className='card-title'>Analysis Results</h2>
+                        </div>
+                        <div className='text-center' style={{ padding: '40px 20px' }}>
+                            <p className='text-muted'>Upload a resume and analyze to see results here.</p>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
@@ -107,28 +367,23 @@ function App() {
     const [session, setSession] = useState(null);
     const [theme, setTheme] = useState('light');
     const [files, setFiles] = useState([]);
-    const [jobDescription, setJobDescription] = useState('React.js developer...');
+    const [jobDescription, setJobDescription] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [results, setResults] = useState(null);
     const [resumes, setResumes] = useState([]);
     const [selectedResumeId, setSelectedResumeId] = useState(null);
     const [reportGenerated, setReportGenerated] = useState(false);
-    
-    // NEW STATE: For upload mode and chart filtering
     const [uploadMode, setUploadMode] = useState('single');
     const [filterRange, setFilterRange] = useState(null);
 
     const displayedAnalysis = resumes.find(r => r.id === selectedResumeId)?.analysis || results;
     
-    // NEW LOGIC: Create a sorted/filtered list of resumes for display
     const displayedResumes = useMemo(() => {
         const sortedResumes = [...resumes].sort((a, b) => b.analysis.match_score - a.analysis.match_score);
         if (!filterRange) {
             return sortedResumes;
         }
-        const inRange = sortedResumes.filter(r => r.analysis.match_score >= filterRange.min && r.analysis.match_score <= filterRange.max);
-        const outOfRange = sortedResumes.filter(r => r.analysis.match_score < filterRange.min || r.analysis.match_score > filterRange.max);
-        return [...inRange, ...outOfRange];
+        return sortedResumes.filter(r => r.analysis.match_score >= filterRange.min && r.analysis.match_score <= filterRange.max);
     }, [resumes, filterRange]);
 
     const fetchUserHistory = async (user) => { 
@@ -155,9 +410,7 @@ function App() {
         }
     };
 
-    // PROPER SESSION HANDLING
     useEffect(() => {
-        // Get initial session
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
             if (session?.user) {
@@ -165,10 +418,7 @@ function App() {
             }
         });
 
-        // Listen for auth changes
-        const {
-            data: { subscription },
-        } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session);
             if (session?.user) {
                 fetchUserHistory(session.user);
@@ -186,13 +436,12 @@ function App() {
     
     const formatFileSize = (bytes) => (bytes / 1024).toFixed(2) + ' KB';
     
-    // MODIFIED: Ensure new files are added to the list, not replacing it
     const handleFilesReceived = useCallback((fileList) => {
         const newFiles = Array.from(fileList);
         if (uploadMode === 'single') {
-            setFiles(newFiles.slice(0, 1)); // Only allow one file in single mode
+            setFiles(newFiles.slice(0, 1));
         } else {
-            setFiles(prev => [...prev, ...newFiles]); // Add files in multiple mode
+            setFiles(prev => [...prev, ...newFiles]);
         }
     }, [uploadMode]);
 
@@ -218,7 +467,7 @@ function App() {
         if (files.length === 0) return;
         setIsLoading(true);
         setReportGenerated(false);
-        setFilterRange(null); // Reset filter on new analysis
+        setFilterRange(null);
         const newResumes = [];
         
         for (const file of files) {
@@ -235,16 +484,14 @@ function App() {
                 const result = await response.json(); 
                 if (!response.ok) throw new Error(result.error);
                 
-                // Create resume object
                 const resumeObj = {
-                    id: Date.now() + Math.random(), // temporary ID
+                    id: Date.now() + Math.random(),
                     fileName: file.name,
                     analysis: result
                 };
                 
                 newResumes.push(resumeObj);
                 
-                // Save to Supabase if user is logged in
                 if (session) { 
                     await supabase.from('analyses').insert([{ 
                         user_id: session.user.id, 
@@ -257,7 +504,6 @@ function App() {
             }
         }
         
-        // Update resumes state with new analyses
         if (newResumes.length > 0) {
             setResumes(prev => [...prev, ...newResumes]);
             if (newResumes.length === 1) {
@@ -286,25 +532,44 @@ function App() {
                         <div className='container'>
                             <div className='header-content'>
                                 <div className='logo'><span>ResumeAI</span></div>
-                                <nav><ul>
-                                    <li><NavLink to='/' className={({ isActive }) => isActive ? 'active' : ''}>Home</NavLink></li>
-                                    <li><NavLink to='/history' className={({ isActive }) => isActive ? 'active' : ''}>History</NavLink></li>
-                                    <li><NavLink to='/settings' className={({ isActive }) => isActive ? 'active' : ''}>Settings</NavLink></li>
-                                    <li><NavLink to='/help' className={({ isActive }) => isActive ? 'active' : ''}>Help</NavLink></li>
-                                    <li><button className='btn-outline' style={{ marginLeft: '20px' }} onClick={() => supabase.auth.signOut()}>Logout</button></li>
-                                </ul></nav>
+                                <nav>
+                                    <ul>
+                                        <li><NavLink to='/' className={({ isActive }) => isActive ? 'active' : ''}>Home</NavLink></li>
+                                        <li><NavLink to='/history' className={({ isActive }) => isActive ? 'active' : ''}>History</NavLink></li>
+                                        <li><NavLink to='/settings' className={({ isActive }) => isActive ? 'active' : ''}>Settings</NavLink></li>
+                                        <li><NavLink to='/help' className={({ isActive }) => isActive ? 'active' : ''}>Help</NavLink></li>
+                                        <li>
+                                            <button 
+                                                className='header-btn' 
+                                                onClick={() => supabase.auth.signOut()}
+                                            >
+                                                Logout
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </nav>
                             </div>
                         </div>
                     </header>
-                    <main className='content-wrap'><div className='container'>
-                        <Routes>
-                            <Route path='/' element={<HomePage logic={logicProps} />} />
-                            <Route path='/history' element={<HistoryPage resumes={resumes} setSelectedResumeId={setSelectedResumeId} setResults={setResults} />} />
-                            <Route path='/settings' element={<SettingsPage theme={theme} setTheme={setTheme} />} />
-                            <Route path='/help' element={<HelpPage />} />
-                        </Routes>
-                    </div></main>
-                    <footer><div className='container'><div className='copyright'><p>&copy; {new Date().getFullYear()} ResumeAI Project | Developers: Maneeth Rao, Ranganatha P.</p></div></div></footer>
+                    
+                    <main className='content-wrap'>
+                        <div className='container'>
+                            <Routes>
+                                <Route path='/' element={<HomePage logic={logicProps} />} />
+                                <Route path='/history' element={<HistoryPage resumes={resumes} setSelectedResumeId={setSelectedResumeId} setResults={setResults} />} />
+                                <Route path='/settings' element={<SettingsPage theme={theme} setTheme={setTheme} />} />
+                                <Route path='/help' element={<HelpPage />} />
+                            </Routes>
+                        </div>
+                    </main>
+                    
+                    <footer>
+                        <div className='container'>
+                            <div className='copyright'>
+                                <p>&copy; {new Date().getFullYear()} ResumeAI Project | Developers: Maneeth Rao, Ranganatha P.</p>
+                            </div>
+                        </div>
+                    </footer>
                 </>
             )}
         </div>
@@ -312,6 +577,11 @@ function App() {
 }
 
 function AppWrapper() {
-    return (<BrowserRouter><App /></BrowserRouter>);
+    return (
+        <BrowserRouter>
+            <App />
+        </BrowserRouter>
+    );
 }
+
 export default AppWrapper;

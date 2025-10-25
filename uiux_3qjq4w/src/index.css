@@ -13,28 +13,57 @@
     --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     --transition: all 0.3s ease;
 }
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
+
+html {
+    height: 100%;
+    overflow-y: scroll; /* Ensure scrollbar always available */
+}
+
 body {
     background-color: #f5f7fb;
     color: var(--dark);
     line-height: 1.6;
+    min-height: 100%;
+    overflow-x: hidden;
 }
+
+/* Improved dark mode with better contrast */
 .dark-mode {
-    --primary: #00ffff;
-    --primary-dark: #00cccc;
-    --secondary: #ff00ff;
-    --success: #00ff88;
-    --danger: #ff0055;
-    --warning: #ffaa00;
-    --light: #1f273d;
-    --dark: #fff;
-    --gray: #6c757d;
-    --gray-light: #131b2e;
-    background-color: #0b0f19;
-    color: #fff;
+    --primary: #60a5fa;
+    --primary-dark: #3b82f6;
+    --secondary: #a855f7;
+    --success: #34d399;
+    --danger: #f87171;
+    --warning: #fbbf24;
+    --light: #1f2937;
+    --dark: #f9fafb;
+    --gray: #9ca3af;
+    --gray-light: #374151;
+    background-color: #111827;
+    color: #f9fafb;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--gray-light);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
 }
