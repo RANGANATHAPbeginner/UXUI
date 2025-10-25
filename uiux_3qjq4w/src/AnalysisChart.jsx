@@ -63,7 +63,7 @@ const AnalysisChart = ({ resumes, onBarClick }) => {
       title: { display: true, text: 'Resume Score Distribution' },
     },
     onClick: (event, elements) => {
-      if (elements.length > 0) {
+      if (elements.length > 0 && onBarClick) {
         const clickedElementIndex = elements[0].index;
         const label = chartData.labels[clickedElementIndex]; // e.g., "51-60"
         const [min, max] = label.split('-').map(Number);
@@ -72,7 +72,7 @@ const AnalysisChart = ({ resumes, onBarClick }) => {
     },
     scales: {
         y: {
-            title: { display: true, text: 'Number of People' },
+            title: { display: true, text: 'Number of Resumes' },
             ticks: { stepSize: 1 } // Ensure Y-axis shows whole numbers
         },
         x: {

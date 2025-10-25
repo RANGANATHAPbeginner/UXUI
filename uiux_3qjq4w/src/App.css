@@ -404,6 +404,12 @@ footer {
     border: 1px solid var(--success);
 }
 
+.dark-mode .file-info {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: var(--text-color) !important;
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
 .file-info span {
     font-size: 0.9rem;
 }
@@ -798,6 +804,10 @@ textarea::placeholder {
     margin-top: 32px;
     padding-top: 20px;
     border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
 }
 
 /* Settings Save Feedback */

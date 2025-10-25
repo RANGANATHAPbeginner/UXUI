@@ -15,7 +15,6 @@ class SettingsManager {
         animations: true,
         sound: true,
         autoSave: true,
-        language: 'english',
         exportFormat: 'pdf',
         primaryColor: '#2563eb',
         resultsPerPage: 10,
@@ -59,9 +58,6 @@ class SettingsManager {
             case 'notifications':
                 this.applyNotifications(value);
                 break;
-            case 'language':
-                this.applyLanguage(value);
-                break;
         }
     }
 
@@ -101,11 +97,6 @@ class SettingsManager {
         if (enabled && 'Notification' in window) {
             Notification.requestPermission();
         }
-    }
-
-    applyLanguage(language) {
-        // You can implement language switching here
-        console.log('Language changed to:', language);
     }
 
     shadeColor(color, percent) {
@@ -168,7 +159,6 @@ const SettingsPage = ({ theme, setTheme }) => {
   const [notifications, setNotifications] = useState(settingsManager.settings.notifications);
   const [autoSave, setAutoSave] = useState(settingsManager.settings.autoSave);
   const [fontSize, setFontSize] = useState(settingsManager.settings.fontSize);
-  const [language, setLanguage] = useState(settingsManager.settings.language);
   const [exportFormat, setExportFormat] = useState(settingsManager.settings.exportFormat);
   const [isSaving, setIsSaving] = useState(false);
   const [isClearingHistory, setIsClearingHistory] = useState(false);
@@ -179,7 +169,6 @@ const SettingsPage = ({ theme, setTheme }) => {
     setNotifications(settingsManager.settings.notifications);
     setAutoSave(settingsManager.settings.autoSave);
     setFontSize(settingsManager.settings.fontSize);
-    setLanguage(settingsManager.settings.language);
     setExportFormat(settingsManager.settings.exportFormat);
   }, []);
 
@@ -196,7 +185,6 @@ const SettingsPage = ({ theme, setTheme }) => {
     settingsManager.updateSetting('notifications', notifications);
     settingsManager.updateSetting('autoSave', autoSave);
     settingsManager.updateSetting('fontSize', fontSize);
-    settingsManager.updateSetting('language', language);
     settingsManager.updateSetting('exportFormat', exportFormat);
 
     // Simulate API call
@@ -296,7 +284,6 @@ const SettingsPage = ({ theme, setTheme }) => {
       setNotifications(settingsManager.settings.notifications);
       setAutoSave(settingsManager.settings.autoSave);
       setFontSize(settingsManager.settings.fontSize);
-      setLanguage(settingsManager.settings.language);
       setExportFormat(settingsManager.settings.exportFormat);
       setTheme(settingsManager.settings.theme);
     }
@@ -320,11 +307,6 @@ const SettingsPage = ({ theme, setTheme }) => {
   const handleFontSizeChange = (newValue) => {
     setFontSize(newValue);
     settingsManager.updateSetting('fontSize', newValue);
-  };
-
-  const handleLanguageChange = (newValue) => {
-    setLanguage(newValue);
-    settingsManager.updateSetting('language', newValue);
   };
 
   const handleExportFormatChange = (newValue) => {
@@ -454,27 +436,6 @@ const SettingsPage = ({ theme, setTheme }) => {
               </label>
             </div>
           </div>
-
-          <div className="setting-item">
-            <div className="setting-info">
-              <h3>Language</h3>
-              <p>Interface language preference</p>
-            </div>
-            <div className="setting-control">
-              <div className="select-wrapper">
-                <select 
-                  className="select"
-                  value={language}
-                  onChange={(e) => handleLanguageChange(e.target.value)}
-                >
-                  <option value="english">English</option>
-                  <option value="spanish">Spanish</option>
-                  <option value="french">French</option>
-                  <option value="german">German</option>
-                </select>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Data Management */}
@@ -541,6 +502,7 @@ const SettingsPage = ({ theme, setTheme }) => {
             onClick={handleSaveSettings}
             disabled={isSaving}
             data-text={isSaving ? 'Saving...' : 'Save Settings'}
+            style={{ marginRight: '16px' }}
           >
             {isSaving ? 'Saving...' : 'Save Settings'}
           </button>
