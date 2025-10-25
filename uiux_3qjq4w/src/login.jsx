@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from './supabaseClient'; // Make sure this import path is correct
 
 /**
  * AuthPage Component
@@ -64,17 +65,24 @@ const AuthPage = () => {
     setTerminalText('> Initiating Authentication...');
     
     try {
-      // Simulated login delay - REPLACE WITH ACTUAL SUPABASE CALL
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Supabase Google OAuth
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/` // Redirect after successful login
+        }
+      });
       
-      // Uncomment and configure for actual Supabase authentication:
-      // const { error } = await supabase.auth.signInWithOAuth({
-      //   provider: 'google',
-      // });
-      // if (error) throw error;
+      if (error) {
+        throw error;
+      }
+      
+      // If successful, Supabase will redirect the user
+      // The redirect will be handled by your app's auth state management
       
     } catch (error) {
       // Handle authentication errors
+      console.error('Google OAuth error:', error);
       setErrorMsg('Authentication failed: ' + error.message);
       setTerminalText('> System Error');
     } finally {
@@ -89,6 +97,13 @@ const AuthPage = () => {
     <>
       {/* ==================== EMBEDDED STYLES ==================== */}
       <style>{`
+        /* Reset and isolate from global styles */
+        .auth-container * {
+          all: unset;
+          display: revert;
+          box-sizing: border-box;
+        }
+
         /* Global Reset */
         * {
           margin: 0;
@@ -98,9 +113,9 @@ const AuthPage = () => {
 
         /* Body Styles - White background with grid */
         body {
-          background: #ffffff;
-          font-family: 'Segoe UI', 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-          color: #1a1a1a;
+          background: #ffffff !important;
+          font-family: 'Segoe UI', 'SF Mono', 'Monaco', 'Inconsolata', monospace !important;
+          color: #1a1a1a !important;
           line-height: 1.6;
           height: 100vh;
           overflow: hidden;
@@ -382,7 +397,7 @@ const AuthPage = () => {
 
         /* Terminal Cursor - Blinking cursor effect */
         .cursor {
-          color: #16a34a;
+          color: #00ff9d;
           margin-left: 2px;
           transition: opacity 0.1s;
           animation: blink 1s infinite;
@@ -548,13 +563,13 @@ const AuthPage = () => {
           }
           
           .main-title {
-            font-size: 1.75rem;
-            letter-spacing: 2px;
+            fontSize: 1.75rem;
+            letterSpacing: 2px;
           }
           
           .subtitle {
-            font-size: 0.7rem;
-            letter-spacing: 2px;
+            fontSize: 0.7rem;
+            letterSpacing: 2px;
           }
           
           .button-content {
@@ -562,7 +577,7 @@ const AuthPage = () => {
           }
           
           .footer {
-            font-size: 0.65rem;
+            fontSize: 0.65rem;
           }
         }
       `}</style>
